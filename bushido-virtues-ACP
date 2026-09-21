@@ -1,0 +1,261 @@
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.20;
+
+contract BushidoHonorSystem {
+
+    error NotAdmin();
+    error InvalidScore();
+
+    address public immutable admin;
+
+    constructor() {
+        admin = msg.sender;
+
+        notionPages["dojo_dashboard"] =
+            "3d623253-688d-8008-8df6-c52e20c26743";
+    }
+
+    modifier onlyAdmin() {
+        if (msg.sender != admin) revert NotAdmin();
+        _;
+    }
+
+    // --------------------------------------------------
+    // NOTION REGISTRY
+    // --------------------------------------------------
+
+    mapping(string => string) private notionPages;
+
+    event NotionPageSet(
+        string indexed key,
+        string pageId
+    );
+
+    function setNotionPage(
+        string calldata key,
+        string calldata pageId
+    ) external onlyAdmin {
+        notionPages[key] = pageId;
+        emit NotionPageSet(key, pageId);
+    }
+
+    function getNotionPage(
+        string calldata key
+    ) external view returns (string memory) {
+        return notionPages[key];
+    }
+
+    // --------------------------------------------------
+    // VIRTUE SYSTEM
+    // --------------------------------------------------
+
+    struct VirtueScore {
+        uint8 gi;      // righteousness
+        uint8 yu;      // courage
+        uint8 jin;     // benevolence
+        uint8 rei;     // respect
+        uint8 makoto;  // sincerity
+    }
+
+    mapping(address => VirtueScore) public virtues;
+
+    event VirtuesUpdated(address indexed user);
+
+    function setVirtues(
+        address user,
+        uint8 gi,
+        uint8 yu,
+        uint8 jin,
+        uint8 rei,
+        uint8 makoto
+    ) external onlyAdmin {
+
+        if (
+            gi > 10 ||
+            yu > 10 ||
+            jin > 10 ||
+            rei > 10 ||
+            makoto > 10
+        ) revert InvalidScore();
+
+        virtues[user] = VirtueScore(
+            gi,
+            yu,
+            jin,
+            rei,
+            makoto
+        );
+
+        emit VirtuesUpdated(user);
+    }
+
+    function virtueAverage(
+        address user
+    ) public view returns (uint256) {
+
+        VirtueScore memory v = virtues[user];
+
+        return (
+            uint256(v.gi) +
+            uint256(v.yu) +
+            uint256(v.jin) +
+            uint256(v.rei) +
+            uint256(v.makoto)
+        ) / 5;
+    }
+
+    // --------------------------------------------------
+    // HONOR SYSTEM
+    // --------------------------------------------------
+
+    mapping(address => uint256) public honorLevel;
+
+    event HonorUpdated(
+        address indexed user,
+        uint256 honor
+    );
+
+    function setHonor(
+        address user,
+        uint256 honor
+    ) external onlyAdmin {
+
+        honorLevel[user] = honor;
+
+        emit HonorUpdated(
+            user,
+            honor
+        );
+    }
+
+    function increaseHonor(
+        address user,
+        uint256 amount
+    ) external onlyAdmin {
+
+        honorLevel[user] += amount;
+
+        emit HonorUpdated(
+            user,
+            honorLevel[user]
+        );
+    }
+
+    // --------------------------------------------------
+    // TIER SYSTEM
+    // --------------------------------------------------
+
+    enum Tier {
+        Tsurano,
+        Samurai,
+        BushidoMaster,
+        Shogun
+    }
+
+    function getTier(
+        address user
+    ) public view returns (Tier) {
+
+        uint256 score = honorLevel[user];
+
+        if (score >= 90) {
+            return Tier.Shogun;
+        }
+
+        if (score >= 75) {
+            return Tier.BushidoMaster;
+        }
+
+        if (score >= 60) {
+            return Tier.Samurai;
+        }
+
+        return Tier.Tsurano;
+    }
+
+    // --------------------------------------------------
+    // TRADE JOURNAL
+    // --------------------------------------------------
+
+    struct Trade {
+        bytes32 id;
+        string route;
+        uint256 amount;
+        uint256 timestamp;
+        uint8 dominantVirtue;
+    }
+
+    mapping(address => Trade[]) private tradeLogs;
+
+    mapping(address => uint256) public tradeCount;
+
+    event TradeRecorded(
+        address indexed trader,
+        bytes32 indexed tradeId
+    );
+
+    function recordTrade(
+        address trader,
+        string calldata route,
+        uint256 amount,
+        uint8 dominantVirtue
+    ) external onlyAdmin {
+
+        bytes32 tradeId = keccak256(
+            abi.encodePacked(
+                trader,
+                route,
+                amount,
+                block.timestamp
+            )
+        );
+
+        tradeLogs[trader].push(
+            Trade({
+                id: tradeId,
+                route: route,
+                amount: amount,
+                timestamp: block.timestamp,
+                dominantVirtue: dominantVirtue
+            })
+        );
+
+        unchecked {
+            ++tradeCount[trader];
+        }
+
+        emit TradeRecorded(
+            trader,
+            tradeId
+        );
+    }
+
+    function getTrade(
+        address trader,
+        uint256 index
+    ) external view returns (Trade memory) {
+
+        return tradeLogs[trader][index];
+    }
+
+    function getTradeCount(
+        address trader
+    ) external view returns (uint256) {
+
+        return tradeLogs[trader].length;
+    }
+
+    // --------------------------------------------------
+    // REPUTATION SCORE
+    // --------------------------------------------------
+
+    function reputationScore(
+        address user
+    ) external view returns (uint256) {
+
+        return
+            honorLevel[user] +
+            tradeCount[user] +
+            virtueAverage(user);
+    }
+}
