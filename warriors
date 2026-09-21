@@ -1,0 +1,9 @@
+struct Warrior {
+    uint64 createdAt;
+    uint64 lastActivity;
+    uint32 level;
+    uint32 honor;
+    uint32 reputation;
+    uint32 achievements;
+    bool active;
+}
