@@ -7,3 +7,42 @@ struct Warrior {
     uint32 achievements;
     bool active;
 }
+import {
+  useEffect,
+  useState
+} from "react";
+IMPORT WARRIOR HOOK
+"useWarrior.ts"
+import { useAccount }
+  from "wagmi";
+
+import { useBushido }
+  from "./useBushido";
+
+export function useWarrior() {
+  const { address } = useAccount();
+
+  const { contract } =
+    useBushido();
+
+  const [warrior, setWarrior] =
+    useState<any>();
+
+  useEffect(() => {
+    if (!address || !contract)
+      return;
+
+    async function load() {
+      const result =
+        await contract.warriors(
+          address
+        );
+
+      setWarrior(result);
+    }
+
+    load();
+  }, [address, contract]);
+
+  return warrior;
+}
