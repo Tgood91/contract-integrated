@@ -20,6 +20,7 @@ mapping(address => Warrior) public warriors;
 function registerWarrior();
 function updateActivity(address);
 function levelUp(address);
+Bushido HOOK
 import { useBushidoContext }
   from "../context/BushidoProvider";
 
