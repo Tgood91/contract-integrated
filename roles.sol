@@ -20,4 +20,10 @@ mapping(address => Warrior) public warriors;
 function registerWarrior();
 function updateActivity(address);
 function levelUp(address);
+import { useBushidoContext }
+  from "../context/BushidoProvider";
+
+export function useBushido() {
+  return useBushidoContext();
+}
 
